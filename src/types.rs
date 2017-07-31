@@ -1,3 +1,5 @@
+use std::env::VarError;
+
 #[repr(C)]
 pub struct CryptoApiBlob {
     pub cb_data : u32,
@@ -19,5 +21,5 @@ pub enum AlgId {
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum SigningError {
-    MissingCredentials
+    MissingCredentials(VarError)
 }
