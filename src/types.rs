@@ -1,4 +1,5 @@
 use std::env::VarError;
+use ::azure::{AzureError};
 
 pub enum SignaturePadding {
     PkcsV15,
@@ -19,9 +20,9 @@ pub enum SignatureAlgorithm {
     ECDSA(DigestAlgorithm)
 }
 
-#[repr(u32)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum SigningError {
     MissingCredentials(VarError),
-    InvalidDigestAlgorithm
+    InvalidDigestAlgorithm,
+    AzureError(AzureError)
 }
