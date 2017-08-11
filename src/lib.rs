@@ -1,5 +1,9 @@
-extern crate serde;
 extern crate winapi;
+extern crate hyper;
+extern crate futures;
+extern crate tokio_core;
+extern crate serde;
+
 
 mod types;
 mod azure;
@@ -40,22 +44,21 @@ fn perform_authenticode_sign(
     signer_cert: &CERT_CONTEXT,
     digest_alg_id: ALG_ID,
     digest : &Vec<u8>) -> Result<(), SigningError> {
-        let key_vault_url = try!(env::var("AZURE_KEY_VAULT_URL").map_err(SigningError::MissingCredentials));
-        let key_vault_client_id = try!(env::var("AZURE_KEY_VAULT_CLIENT_ID").map_err(SigningError::MissingCredentials));
-        let key_vault_client_secret = try!(env::var("AZURE_KEY_VAULT_CLIENT_SECRET").map_err(SigningError::MissingCredentials));
+        let key_vault_url = env::var("AZURE_KEY_VAULT_URL").map_err(SigningError::MissingCredentials)?;
+        let key_vault_client_id = env::var("AZURE_KEY_VAULT_CLIENT_ID").map_err(SigningError::MissingCredentials)?;
+        let key_vault_client_secret = env::var("AZURE_KEY_VAULT_CLIENT_SECRET").map_err(SigningError::MissingCredentials)?;
         let credentials = azure::AzureCredentials {
             client_id : key_vault_client_id,
             client_secret : key_vault_client_secret
         };
-        let key_vault_certificate = try!(env::var("AZURE_KEY_VAULT_CERTIFICATE").map_err(SigningError::MissingCredentials));
-        let digest_algorithm = match digest_alg_id.to_algorithm() {
-            Some(x) => x,
-            None => return Result::Err(SigningError::InvalidDigestAlgorithm)
-        };
+        let key_vault_certificate = env::var("AZURE_KEY_VAULT_CERTIFICATE").map_err(SigningError::MissingCredentials)?;
+        let digest_algorithm = digest_alg_id.to_algorithm().ok_or(SigningError::InvalidDigestAlgorithm)?;
         let signature_algorithm = SignatureAlgorithm::RSA(digest_algorithm, SignaturePadding::PkcsV15);
 
-        let azure_state = create_azure_state();
-        let azure_certificate = try!(get_key_vault_certificate(&key_vault_certificate, &azure_state).map_err(SigningError::AzureError));
+        let mut azure_client = AzureClient::new(&credentials, key_vault_url);
+        let azure_certificate = azure_client.get_key_vault_certificate(&key_vault_certificate).map_err(SigningError::AzureError)?;
+        let azure_key = azure_client.get_key_vault_key_for_certificate(azure_certificate).map_err(SigningError::AzureError)?;
+        println!("{}", "Made it here!");
         return Result::Ok(());
 }
 
